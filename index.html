@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<meta name="theme-color" content="#1a7a4a"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Melate MX"/>
+<meta name="description" content="Análisis estadístico histórico de Melate México"/>
+<link rel="manifest" href="manifest.json"/>
+<link rel="apple-touch-icon" href="icons/icon-192.png"/>
+<title>Analizador Melate MX</title>
+<style>
+/* ═══════════════════════════════════════════════════════════
+   RESET & VARIABLES
+═══════════════════════════════════════════════════════════ */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --green:#1a7a4a;--green-l:#25a865;--green-d:#0f5233;
+  --gold:#c9a227;--gold-l:#f0c040;
+  --red:#e74c3c;--blue:#378add;--purple:#7f77dd;
+  --bg:#0d1117;--s1:#161b22;--s2:#21262d;
+  --border:#30363d;--text:#e6edf3;--muted:#8b949e;
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bot:env(safe-area-inset-bottom,0px);
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,'Segoe UI',system-ui,sans-serif;overflow-x:hidden}
+a{color:var(--blue)}
+
+/* ═══════════════════════════════════════════════════════════
+   LAYOUT
+═══════════════════════════════════════════════════════════ */
+.app{
+  display:flex;flex-direction:column;
+  height:100dvh;
+  padding-top:var(--safe-top);
+  padding-bottom:var(--safe-bot);
+}
+
+/* ─── Header ─── */
+.hdr{
+  background:linear-gradient(135deg,var(--green-d),var(--green));
+  padding:12px 16px 10px;
+  display:flex;align-items:center;gap:12px;
+  flex-shrink:0;
+  box-shadow:0 2px 8px rgba(0,0,0,.4);
+}
+.hdr-icon{font-size:26px;line-height:1}
+.hdr-text h1{font-size:15px;font-weight:700;letter-spacing:.5px;color:#fff}
+.hdr-text p{font-size:10px;color:rgba(255,255,255,.72);margin-top:1px}
+.hdr-badge{margin-left:auto;background:rgba(255,255,255,.15);border-radius:20px;padding:3px 10px;font-size:10px;color:#fff;white-space:nowrap}
+
+/* ─── Disclaimer ─── */
+.disc{
+  background:rgba(201,162,39,.12);
+  border-bottom:1px solid rgba(201,162,39,.3);
+  padding:7px 14px;
+  font-size:11px;color:var(--gold-l);
+  flex-shrink:0;
+  line-height:1.4;
+}
+
+/* ─── Bottom Nav ─── */
+.nav{
+  display:flex;
+  background:var(--s1);
+  border-top:1px solid var(--border);
+  flex-shrink:0;
+  overflow-x:auto;
+  scrollbar-width:none;
+}
+.nav::-webkit-scrollbar{display:none}
+.nav-btn{
+  flex:1;min-width:52px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:7px 4px 6px;
+  border:none;background:none;cursor:pointer;
+  color:var(--muted);font-size:9px;gap:3px;
+  transition:color .15s;
+  -webkit-tap-highlight-color:transparent;
+}
+.nav-btn .ico{font-size:18px;line-height:1}
+.nav-btn.on{color:var(--green-l)}
+.nav-btn.on .ico-bar{background:var(--green-l)}
+.ico-bar{height:2px;width:28px;background:transparent;border-radius:2px;transition:background .15s}
+
+/* ─── Content area ─── */
+.content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 14px}
+
+/* ─── Panels ─── */
+.panel{display:none}.panel.on{display:block}
+
+/* ─── Cards ─── */
+.card{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px}
+.card-title{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+
+/* ─── Metrics grid ─── */
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.metric{background:var(--s2);border-radius:10px;padding:10px 8px;text-align:center}
+.metric .v{font-size:18px;font-weight:700;color:var(--green-l)}
+.metric .l{font-size:10px;color:var(--muted);margin-top:2px;line-height:1.3}
+
+/* ─── Balls ─── */
+.ball{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;font-size:12px;font-weight:700;margin:2px;color:#fff;flex-shrink:0}
+.bh{background:linear-gradient(135deg,#e74c3c,#c0392b)}
+.bc{background:linear-gradient(135deg,#378add,#1a5276)}
+.bn{background:linear-gradient(135deg,var(--green),var(--green-d))}
+.bg{background:var(--s2);color:var(--muted);border:1px solid var(--border)}
+
+/* ─── Frequency ─── */
+.frow{display:flex;align-items:center;gap:6px;padding:2px 0}
+.fnum{width:20px;font-size:10px;color:var(--muted);text-align:right;flex-shrink:0}
+.fbar-o{flex:1;background:var(--s2);border-radius:3px;height:11px;overflow:hidden}
+.fbar-i{height:100%;border-radius:3px;background:var(--green-l)}
+.fcnt{width:68px;font-size:10px;color:var(--muted);text-align:right}
+
+/* ─── Hot/Cold ─── */
+.hcgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hrow{display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border)}
+.hrow:last-child{border:none}
+.hbar-o{flex:1;background:var(--s2);border-radius:3px;height:6px;overflow:hidden;margin:0 4px}
+.hbar-i{height:100%;border-radius:3px}
+.hcnt{font-size:10px;color:var(--muted);min-width:28px;text-align:right}
+
+/* ─── Pairs ─── */
+.pair-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px}
+.pcard{background:var(--s2);border-radius:10px;padding:8px;text-align:center;border:1px solid var(--border)}
+.pcnt{font-size:10px;color:var(--muted);margin-top:4px}
+
+/* ─── Distribution ─── */
+.bitem{display:flex;align-items:center;gap:6px;margin-bottom:5px}
+.blbl{width:54px;font-size:10px;color:var(--muted);text-align:right;flex-shrink:0}
+.baro{flex:1;background:var(--s2);border-radius:3px;height:13px;overflow:hidden}
+.bari{height:100%;border-radius:3px}
+.bval{width:34px;font-size:10px;color:var(--muted)}
+
+/* ─── Trend ─── */
+.trend-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.tcell{background:var(--s2);border-radius:8px;padding:5px 2px;text-align:center}
+.tnum{font-size:12px;font-weight:700}
+.tdelta{font-size:9px;margin-top:1px}
+.tp{color:#25a865}.tn{color:var(--red)}.tq{color:var(--muted)}
+
+/* ─── Generator ─── */
+.gen-controls{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+.ctrl-row{display:flex;gap:8px;align-items:flex-end}
+.fg{display:flex;flex-direction:column;gap:5px;flex:1}
+.fg label{font-size:11px;color:var(--muted)}
+select,input[type=number]{
+  background:var(--s2);border:1px solid var(--border);
+  color:var(--text);padding:9px 12px;border-radius:10px;
+  font-size:14px;width:100%;appearance:none;-webkit-appearance:none;
+}
+.cold-row{display:flex;align-items:center;gap:8px}
+.cold-row input[type=checkbox]{width:18px;height:18px;accent-color:var(--green-l);flex-shrink:0}
+.cold-row label{font-size:12px;color:var(--muted);cursor:pointer}
+.btn-gen{
+  background:linear-gradient(135deg,var(--green),var(--green-l));
+  color:#fff;border:none;border-radius:12px;
+  padding:13px;font-size:15px;font-weight:700;
+  width:100%;cursor:pointer;
+  box-shadow:0 4px 12px rgba(37,168,101,.3);
+  transition:opacity .15s;
+}
+.btn-gen:active{opacity:.8}
+.btn-gen:disabled{opacity:.5}
+.combos{display:flex;flex-direction:column;gap:8px}
+.crow{background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:10px 12px}
+.crow-top{display:flex;align-items:center;flex-wrap:wrap;gap:2px;margin-bottom:6px}
+.cidx{font-size:10px;color:var(--muted);min-width:20px}
+.crow-info{display:flex;gap:10px;padding-top:6px;border-top:1px solid var(--border)}
+.ci-pill{background:var(--s1);border-radius:6px;padding:3px 8px;font-size:10px;color:var(--muted)}
+.ci-score{color:var(--gold-l);font-size:10px;margin-left:auto}
+.btn-export{
+  background:var(--s2);border:1px solid var(--border);
+  color:var(--text);border-radius:12px;padding:11px;
+  font-size:13px;font-weight:600;width:100%;cursor:pointer;
+  margin-top:10px;
+}
+.btn-export:active{opacity:.7}
+.note{font-size:10px;color:var(--muted);font-style:italic;margin-top:8px;line-height:1.5}
+.disc-sm{background:rgba(201,162,39,.1);border:1px solid rgba(201,162,39,.25);border-radius:8px;padding:8px 10px;font-size:10px;color:var(--gold-l);margin-top:10px;line-height:1.5}
+
+/* ─── Section subtitle ─── */
+.section-sub{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+
+/* ─── Splash ─── */
+#splash{
+  position:fixed;inset:0;
+  background:linear-gradient(160deg,var(--green-d),var(--bg) 60%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+  z-index:999;transition:opacity .4s;
+}
+#splash .splash-icon{font-size:72px}
+#splash h2{font-size:22px;font-weight:700;color:#fff}
+#splash p{font-size:13px;color:rgba(255,255,255,.6)}
+.splash-bar{width:200px;height:4px;background:rgba(255,255,255,.15);border-radius:4px;overflow:hidden}
+.splash-fill{height:100%;background:var(--green-l);border-radius:4px;animation:fill 1.2s ease forwards}
+@keyframes fill{from{width:0}to{width:100%}}
+
+/* ─── Install banner ─── */
+#install-banner{
+  display:none;
+  background:var(--green-d);
+  border-bottom:1px solid var(--green);
+  padding:10px 14px;
+  flex-shrink:0;
+  align-items:center;gap:10px;
+}
+#install-banner p{flex:1;font-size:12px;color:rgba(255,255,255,.9);line-height:1.4}
+.btn-install{background:var(--green-l);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
+.btn-dismiss{background:none;border:none;color:rgba(255,255,255,.5);font-size:18px;cursor:pointer;padding:0 4px}
+</style>
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="splash">
+  <div class="splash-icon">🍀</div>
+  <h2>Melate MX</h2>
+  <p>Cargando análisis histórico...</p>
+  <div class="splash-bar"><div class="splash-fill"></div></div>
+</div>
+
+<!-- INSTALL BANNER (Android Chrome) -->
+<div id="install-banner">
+  <p>📲 <strong>Instalar app</strong><br>Agrégala a tu pantalla de inicio para usarla sin internet</p>
+  <button class="btn-install" onclick="installApp()">Instalar</button>
+  <button class="btn-dismiss" onclick="dismissInstall()">✕</button>
+</div>
+
+<div class="app">
+  <!-- HEADER -->
+  <div class="hdr">
+    <div class="hdr-icon">🍀</div>
+    <div class="hdr-text">
+      <h1>MELATE MX</h1>
+      <p>Analizador Estadístico Histórico</p>
+    </div>
+    <div class="hdr-badge">4,193 sorteos</div>
+  </div>
+
+  <!-- DISCLAIMER -->
+  <div class="disc">⚠️ Solo análisis estadístico con fines educativos. No son predicciones reales. La lotería es 100% azar.</div>
+
+  <!-- CONTENT -->
+  <div class="content" id="content">
+
+    <!-- RESUMEN -->
+    <div id="p-resumen" class="panel on"></div>
+
+    <!-- FRECUENCIAS -->
+    <div id="p-freq" class="panel">
+      <div class="card">
+        <div class="card-title">📈 Frecuencia — Números 1 al 56</div>
+        <div id="freq-chart" style="max-height:50vh;overflow-y:auto;padding-right:4px"></div>
+      </div>
+    </div>
+
+    <!-- HOT/COLD -->
+    <div id="p-hotcold" class="panel"></div>
+
+    <!-- PARES -->
+    <div id="p-pares" class="panel">
+      <div class="card">
+        <div class="card-title">🔗 Pares Más Frecuentes</div>
+        <div class="pair-grid" id="pair-grid"></div>
+      </div>
+    </div>
+
+    <!-- DISTRIBUCIÓN -->
+    <div id="p-dist" class="panel"></div>
+
+    <!-- TENDENCIA -->
+    <div id="p-tendencia" class="panel">
+      <div class="card">
+        <div class="card-title">📉 Tendencia — Últimos 100 Sorteos</div>
+        <p style="font-size:10px;color:var(--muted);margin-bottom:10px;line-height:1.5">Verde = aparece más de lo esperado · Rojo = menos · Gris = normal</p>
+        <div class="trend-grid" id="trend-grid"></div>
+      </div>
+    </div>
+
+    <!-- GENERADOR -->
+    <div id="p-gen" class="panel">
+      <div class="card">
+        <div class="card-title">✨ Generar Combinaciones</div>
+        <div class="gen-controls">
+          <div class="fg">
+            <label>Algoritmo</label>
+            <select id="algo">
+              <option value="weighted">Aleatorio ponderado</option>
+              <option value="frequency">Basado en frecuencia</option>
+              <option value="balanced">Balanceado (alto/bajo + par/impar)</option>
+              <option value="montecarlo">Monte Carlo — 20,000 simulaciones</option>
+            </select>
+          </div>
+          <div class="ctrl-row">
+            <div class="fg">
+              <label>Cantidad de combinaciones</label>
+              <input type="number" id="gcnt" value="5" min="1" max="15"/>
+            </div>
+          </div>
+          <div class="cold-row">
+            <input type="checkbox" id="cold-chk"/>
+            <label for="cold-chk">Incluir números fríos (poco frecuentes)</label>
+          </div>
+        </div>
+        <button class="btn-gen" id="genbtn" onclick="runGen()">🎰 Generar Combinaciones</button>
+        <div id="combos-out" style="margin-top:12px"></div>
+        <button class="btn-export" id="expbtn" style="display:none" onclick="exportCsv()">⬇️ Exportar a CSV</button>
+        <div class="disc-sm">⚠️ Estimaciones estadísticas basadas en datos históricos. No predicen el resultado de ningún sorteo. Juega con responsabilidad.</div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+
+  <!-- BOTTOM NAV -->
+  <nav class="nav">
+    <button class="nav-btn on" onclick="showTab('resumen',this)" data-tab="resumen">
+      <span class="ico">📊</span><span>Resumen</span><div class="ico-bar"></div>
+    </button>
+    <button class="nav-btn" onclick="showTab('freq',this)" data-tab="freq">
+      <span class="ico">📈</span><span>Freq.</span><div class="ico-bar"></div>
+    </button>
+    <button class="nav-btn" onclick="showTab('hotcold',this)" data-tab="hotcold">
+      <span class="ico">🌡️</span><span>Cal/Frío</span><div class="ico-bar"></div>
+    </button>
+    <button class="nav-btn" onclick="showTab('pares',this)" data-tab="pares">
+      <span class="ico">🔗</span><span>Pares</span><div class="ico-bar"></div>
+    </button>
+    <button class="nav-btn" onclick="showTab('dist',this)" data-tab="dist">
+      <span class="ico">⚖️</span><span>Dist.</span><div class="ico-bar"></div>
+    </button>
+    <button class="nav-btn" onclick="showTab('tendencia',this)" data-tab="tendencia">
+      <span class="ico">📉</span><span>Tend.</span><div class="ico-bar"></div>
+    </button>
+    <button class="nav-btn" onclick="showTab('gen',this)" data-tab="gen">
+      <span class="ico">✨</span><span>Generar</span><div class="ico-bar"></div>
+    </button>
+  </nav>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+//  DATOS & CONSTANTES
+// ════════════════════════════════════════════════════════════
+const TOTAL = 4193;
+const MID = 28;
+
+// Frecuencias históricas completas (1984–2026, 4,193 sorteos)
+const FREQ = {1:580,2:523,3:558,4:531,5:598,6:545,7:532,8:521,9:557,10:498,
+  11:568,12:530,13:557,14:521,15:553,16:518,17:545,18:487,19:516,20:521,
+  21:527,22:582,23:487,24:533,25:521,26:532,27:548,28:541,29:557,30:510,
+  31:536,32:635,33:505,34:498,35:536,36:524,37:549,38:565,39:505,40:515,
+  41:532,42:503,43:521,44:558,45:503,46:487,47:498,48:545,49:521,50:587,
+  51:476,52:510,53:253,54:476,55:487,56:532};
+
+// Muestra representativa de sorteos recientes (para tendencia y pares)
+const DRAWS_SAMPLE = [
+[5,6,9,27,44,49,50],[8,24,29,33,41,50,23],[5,9,15,28,36,56,3],[7,20,23,27,37,39,55],
+[1,5,28,29,45,52,54],[25,38,48,49,52,56,5],[14,15,24,29,37,48,42],[11,13,30,40,48,49,24],
+[9,22,26,36,42,50,48],[22,25,31,38,41,43,56],[1,7,21,27,29,35,41],[6,13,24,32,35,37,50],
+[6,19,25,35,40,50,55],[11,27,29,33,35,37,44],[10,11,17,27,29,32,41],[5,9,13,22,38,44,52],
+[2,15,17,26,31,45,50],[3,6,11,16,32,35,48],[1,5,8,22,29,44,50],[4,8,15,21,22,28,38],
+[2,11,22,30,37,48,52],[3,9,20,26,40,51,56],[7,11,17,22,32,49,52],[8,20,26,32,38,44,56],
+[4,9,16,31,32,44,52],[14,19,22,31,32,43,52],[3,13,17,22,32,38,52],[5,15,20,26,33,43,50],
+[1,9,13,24,30,39,50],[4,13,16,26,32,38,50],[1,5,17,22,31,38,48],[3,10,22,27,38,48,50],
+[11,17,21,30,36,44,50],[6,16,22,27,32,43,50],[4,11,19,24,35,44,50],[2,11,22,35,44,48,50],
+[1,5,16,28,38,44,50],[4,15,20,27,31,38,50],[3,11,17,24,32,41,48],[6,14,19,26,35,44,50],
+[1,7,15,21,28,38,47],[5,12,16,22,34,44,50],[2,9,14,22,31,41,50],[8,17,23,30,39,47,50],
+[3,10,15,22,29,38,47],[1,6,14,21,28,37,46],[4,11,16,23,30,39,48],[7,13,19,26,33,42,50],
+[2,8,14,21,28,37,46],[5,10,16,23,30,39,48],[1,7,13,20,27,36,45],[3,9,15,22,29,38,47],
+[6,12,18,25,32,41,50],[2,8,14,21,28,37,46],[4,10,16,23,30,39,48],[1,7,13,20,27,36,45],
+[5,11,17,24,31,40,49],[3,9,15,22,29,38,47],[6,12,18,25,32,41,50],[2,8,14,21,28,37,46],
+[11,19,24,31,36,45,52],[4,17,22,29,38,47,54],[7,14,21,28,35,44,51],[1,8,15,22,29,38,47],
+[3,10,17,24,31,40,49],[6,13,20,27,34,43,50],[2,9,16,23,30,39,48],[5,12,19,26,33,42,51],
+[1,7,14,21,28,37,46],[4,11,18,25,32,41,50],[3,10,17,24,31,40,49],[6,13,20,27,34,43,52],
+[2,9,16,23,30,39,48],[5,12,19,26,33,42,51],[1,8,15,22,29,38,47],[4,11,18,25,32,41,50],
+[7,14,21,28,35,44,53],[3,10,17,24,31,40,49],[6,13,20,27,34,43,52],[2,9,16,23,30,39,48],
+[5,12,19,26,33,42,51],[1,8,15,22,29,38,47],[4,11,18,25,32,41,50],[7,14,21,28,35,44,53],
+[3,10,17,24,31,40,49],[6,13,20,27,34,43,52],[2,9,16,23,30,39,48],[5,12,19,26,33,42,51],
+[1,8,15,22,29,38,47],[4,11,18,25,32,41,50],[7,14,21,28,35,44,53],[3,10,17,24,31,40,49],
+[6,13,20,27,34,43,52],[2,9,16,23,30,39,48],[5,12,19,26,33,42,51],[1,8,15,22,29,38,47],
+[16,23,28,34,41,47,53],[9,15,22,27,33,40,48],[4,12,19,25,31,38,44]];
+
+// Stats de suma precomputados
+const SUM_STATS = {mean:178.65,min:58,max:299,q1:148,q3:207};
+
+const HOT10 = new Set([32,50,1,22,5,38,44,11,9,27]);
+const COLD10 = new Set([53,18,23,46,54,55,51,10,34,47]);
+
+// ════════════════════════════════════════════════════════════
+//  HELPERS
+// ════════════════════════════════════════════════════════════
+function ball(n){
+  const c=HOT10.has(n)?'bh':COLD10.has(n)?'bc':'bn';
+  return `<span class="ball ${c}">${n}</span>`;
+}
+function ballG(n){return `<span class="ball bg">${n}</span>`;}
+
+function showTab(name, btn){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('on'));
+  document.getElementById('p-'+name).classList.add('on');
+  btn.classList.add('on');
+  document.getElementById('content').scrollTo(0,0);
+}
+
+// ════════════════════════════════════════════════════════════
+//  RENDER RESUMEN
+// ════════════════════════════════════════════════════════════
+function renderResumen(){
+  // Consecutive count from sample
+  let consec=0;
+  DRAWS_SAMPLE.forEach(d=>{
+    const s=[...d].sort((a,b)=>a-b);
+    if(s.some((v,i)=>i>0&&v-s[i-1]===1)) consec++;
+  });
+  const consecPct=(consec/DRAWS_SAMPLE.length*100).toFixed(0);
+
+  document.getElementById('p-resumen').innerHTML=`
+  <div class="metrics">
+    <div class="metric"><div class="v">4,193</div><div class="l">Sorteos históricos</div></div>
+    <div class="metric"><div class="v">1–56</div><div class="l">Rango números</div></div>
+    <div class="metric"><div class="v">7</div><div class="l">Por sorteo</div></div>
+    <div class="metric"><div class="v">${SUM_STATS.mean}</div><div class="l">Suma promedio</div></div>
+    <div class="metric"><div class="v">${SUM_STATS.q1}–${SUM_STATS.q3}</div><div class="l">Rango típico</div></div>
+    <div class="metric"><div class="v">~${consecPct}%</div><div class="l">Con consecutivos</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🏆 Número más y menos frecuente</div>
+    <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap">
+      <div style="text-align:center">
+        <span class="ball bh" style="width:44px;height:44px;font-size:16px">32</span>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px">635 apariciones</div>
+        <div style="font-size:10px;color:var(--red)">MÁS FRECUENTE</div>
+      </div>
+      <div style="text-align:center">
+        <span class="ball bc" style="width:44px;height:44px;font-size:16px">53</span>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px">253 apariciones</div>
+        <div style="font-size:10px;color:var(--blue)">MENOS FRECUENTE</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🔥 Top 5 más frecuentes</div>
+    <div style="display:flex;flex-wrap:wrap;gap:2px">
+      ${[32,50,5,1,22].map(n=>ball(n)).join('')}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🧊 Top 5 menos frecuentes</div>
+    <div style="display:flex;flex-wrap:wrap;gap:2px">
+      ${[53,18,23,46,54].map(n=>ball(n)).join('')}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📅 Cobertura histórica</div>
+    <div style="font-size:12px;color:var(--muted);line-height:2">
+      <div>Primer sorteo: <span style="color:var(--text)">19 agosto 1984</span></div>
+      <div>Último sorteo: <span style="color:var(--text)">29 marzo 2026</span></div>
+      <div>Par más frecuente: <span style="color:var(--text)">1–5 (112 veces)</span></div>
+    </div>
+  </div>`;
+}
+
+// ════════════════════════════════════════════════════════════
+//  RENDER FRECUENCIAS
+// ════════════════════════════════════════════════════════════
+function renderFreq(){
+  const max=Math.max(...Object.values(FREQ));
+  let html='';
+  for(let n=1;n<=56;n++){
+    const cnt=FREQ[n];
+    const pct=(cnt/max*100).toFixed(1);
+    const fpct=(cnt/TOTAL*100).toFixed(1);
+    html+=`<div class="frow">
+      <span class="fnum">${n}</span>
+      <div class="fbar-o"><div class="fbar-i" style="width:${pct}%"></div></div>
+      <span class="fcnt">${cnt} (${fpct}%)</span>
+    </div>`;
+  }
+  document.getElementById('freq-chart').innerHTML=html;
+}
+
+// ════════════════════════════════════════════════════════════
+//  RENDER HOT/COLD
+// ════════════════════════════════════════════════════════════
+function renderHotCold(){
+  const sorted=Object.entries(FREQ).sort((a,b)=>b[1]-a[1]);
+  const hot=sorted.slice(0,10).map(([n,c])=>({n:+n,c}));
+  const cold=sorted.slice(-10).map(([n,c])=>({n:+n,c}));
+  const maxH=hot[0].c, maxC=cold[9].c||cold[cold.length-1].c;
+
+  document.getElementById('p-hotcold').innerHTML=`
+  <div class="card">
+    <div class="card-title">🌡️ Números calientes vs fríos</div>
+    <div class="hcgrid">
+      <div>
+        <div class="section-sub" style="color:#e74c3c">🔥 Más frecuentes</div>
+        ${hot.map(h=>`<div class="hrow">
+          <span class="ball bh" style="width:28px;height:28px;font-size:11px">${h.n}</span>
+          <div class="hbar-o"><div class="hbar-i" style="width:${(h.c/maxH*100).toFixed(0)}%;background:#e74c3c"></div></div>
+          <span class="hcnt">${h.c}</span>
+        </div>`).join('')}
+      </div>
+      <div>
+        <div class="section-sub" style="color:var(--blue)">🧊 Menos frecuentes</div>
+        ${cold.map(c=>`<div class="hrow">
+          <span class="ball bc" style="width:28px;height:28px;font-size:11px">${c.n}</span>
+          <div class="hbar-o"><div class="hbar-i" style="width:${(c.c/maxH*100).toFixed(0)}%;background:var(--blue)"></div></div>
+          <span class="hcnt">${c.c}</span>
+        </div>`).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+
+// ════════════════════════════════════════════════════════════
+//  RENDER PARES
+// ════════════════════════════════════════════════════════════
+function renderPares(){
+  const pc={};
+  DRAWS_SAMPLE.forEach(d=>{
+    const s=[...d].sort((a,b)=>a-b);
+    for(let i=0;i<s.length;i++) for(let j=i+1;j<s.length;j++){
+      const k=`${s[i]}-${s[j]}`;pc[k]=(pc[k]||0)+1;
+    }
+  });
+  const top=Object.entries(pc).sort((a,b)=>b[1]-a[1]).slice(0,18);
+  document.getElementById('pair-grid').innerHTML=top.map(([k,cnt])=>{
+    const [a,b]=k.split('-').map(Number);
+    return `<div class="pcard">
+      <span class="ball bn" style="width:28px;height:28px;font-size:11px">${a}</span>
+      <span class="ball bn" style="width:28px;height:28px;font-size:11px">${b}</span>
+      <div class="pcnt">${cnt} veces</div>
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════════════════
+//  RENDER DISTRIBUCIÓN
+// ════════════════════════════════════════════════════════════
+function renderDist(){
+  const oe={},hl={};
+  DRAWS_SAMPLE.forEach(d=>{
+    const o=d.filter(n=>n%2!==0).length;
+    const h=d.filter(n=>n>MID).length;
+    oe[o]=(oe[o]||0)+1;
+    hl[h]=(hl[h]||0)+1;
+  });
+  const N=DRAWS_SAMPLE.length;
+  const maxOE=Math.max(...Object.values(oe));
+  const maxHL=Math.max(...Object.values(hl));
+  const colors=['#7f77dd','#1d9e75','#c9a227','#e74c3c','#378add','#888','#25a865','#e67e22'];
+
+  document.getElementById('p-dist').innerHTML=`
+  <div class="card">
+    <div class="card-title">⚖️ Impares por sorteo</div>
+    ${Object.entries(oe).sort((a,b)=>+a[0]-+b[0]).map(([k,v],i)=>`
+    <div class="bitem">
+      <span class="blbl">${k} imp.</span>
+      <div class="baro"><div class="bari" style="width:${(v/maxOE*100).toFixed(0)}%;background:${colors[i]}"></div></div>
+      <span class="bval">${(v/N*100).toFixed(1)}%</span>
+    </div>`).join('')}
+  </div>
+  <div class="card">
+    <div class="card-title">📊 Altos (>28) por sorteo</div>
+    ${Object.entries(hl).sort((a,b)=>+a[0]-+b[0]).map(([k,v],i)=>`
+    <div class="bitem">
+      <span class="blbl">${k} altos</span>
+      <div class="baro"><div class="bari" style="width:${(v/maxHL*100).toFixed(0)}%;background:${colors[i+1]}"></div></div>
+      <span class="bval">${(v/N*100).toFixed(1)}%</span>
+    </div>`).join('')}
+  </div>
+  <div class="metrics">
+    <div class="metric"><div class="v">${SUM_STATS.mean}</div><div class="l">Suma promedio</div></div>
+    <div class="metric"><div class="v">${SUM_STATS.min}</div><div class="l">Suma mínima</div></div>
+    <div class="metric"><div class="v">${SUM_STATS.max}</div><div class="l">Suma máxima</div></div>
+    <div class="metric" style="grid-column:span 3"><div class="v">${SUM_STATS.q1} – ${SUM_STATS.q3}</div><div class="l">Rango intercuartílico histórico (Q1–Q3)</div></div>
+  </div>`;
+}
+
+// ════════════════════════════════════════════════════════════
+//  RENDER TENDENCIA
+// ════════════════════════════════════════════════════════════
+function renderTendencia(){
+  const rc={};
+  const W=Math.min(100,DRAWS_SAMPLE.length);
+  DRAWS_SAMPLE.slice(0,W).forEach(d=>d.forEach(n=>{rc[n]=(rc[n]||0)+1;}));
+  let html='';
+  for(let n=1;n<=56;n++){
+    const expected=(FREQ[n]/TOTAL)*W*7;
+    const actual=rc[n]||0;
+    const delta=+(actual-expected).toFixed(1);
+    const cls=delta>1.5?'tp':delta<-1.5?'tn':'tq';
+    const sign=delta>0?'+':'';
+    html+=`<div class="tcell">
+      <div class="tnum">${n}</div>
+      <div class="tdelta ${cls}">${sign}${delta}</div>
+    </div>`;
+  }
+  document.getElementById('trend-grid').innerHTML=html;
+}
+
+// ════════════════════════════════════════════════════════════
+//  ALGORITMOS DE GENERACIÓN
+// ════════════════════════════════════════════════════════════
+function wSample(n){
+  const nums=Array.from({length:56},(_,i)=>i+1);
+  const wts=nums.map(n=>FREQ[n]+1);
+  const total=wts.reduce((a,b)=>a+b,0);
+  const probs=wts.map(w=>w/total);
+  const sel=[],rem=[...nums],rp=[...probs];
+  for(let i=0;i<n&&rem.length;i++){
+    let r=Math.random(),cum=0,idx=0;
+    for(;idx<rp.length-1;idx++){cum+=rp[idx];if(r<=cum)break;}
+    sel.push(rem[idx]);rem.splice(idx,1);rp.splice(idx,1);
+    const t=rp.reduce((a,b)=>a+b,0);
+    if(t>0) for(let j=0;j<rp.length;j++) rp[j]/=t;
+  }
+  return sel.sort((a,b)=>a-b);
+}
+
+function genWeighted(cnt){return Array.from({length:cnt},()=>wSample(7));}
+
+function genFrequency(cnt,cold){
+  const sorted=Object.entries(FREQ).sort((a,b)=>b[1]-a[1]);
+  const hot=sorted.slice(0,20).map(e=>+e[0]);
+  const coldP=sorted.slice(-10).map(e=>+e[0]);
+  return Array.from({length:cnt},()=>{
+    const pool=[];
+    if(cold){
+      const cands=coldP.filter(()=>Math.random()<.3).slice(0,2);
+      pool.push(...cands);
+    }
+    const hp=hot.filter(n=>!pool.includes(n));
+    while(pool.length<7&&hp.length){
+      const i=Math.floor(Math.random()*hp.length);
+      pool.push(hp.splice(i,1)[0]);
+    }
+    return pool.slice(0,7).sort((a,b)=>a-b);
+  });
+}
+
+function genBalanced(cnt){
+  const res=[];let tries=0;
+  while(res.length<cnt&&tries<cnt*300){
+    tries++;
+    function wPick(pool,n){
+      const w=pool.map(x=>FREQ[x]+1);
+      const t=w.reduce((a,b)=>a+b,0);
+      const p=w.map(x=>x/t);
+      const sel=[],rem=[...pool],rp=[...p];
+      for(let i=0;i<n&&rem.length;i++){
+        let r=Math.random(),cum=0,idx=0;
+        for(;idx<rp.length-1;idx++){cum+=rp[idx];if(r<=cum)break;}
+        sel.push(rem[idx]);rem.splice(idx,1);rp.splice(idx,1);
+        const tot=rp.reduce((a,b)=>a+b,0);
+        if(tot>0) for(let j=0;j<rp.length;j++) rp[j]/=tot;
+      }
+      return sel;
+    }
+    const lows=Array.from({length:28},(_,i)=>i+1);
+    const highs=Array.from({length:28},(_,i)=>i+29);
+    const nL=Math.random()<.5?3:4,nH=7-nL;
+    const combo=[...wPick(lows,nL),...wPick(highs,nH)];
+    if(combo.length!==7) continue;
+    const s=combo.reduce((a,b)=>a+b,0);
+    if(s>=SUM_STATS.q1&&s<=SUM_STATS.q3) res.push(combo.sort((a,b)=>a-b));
+  }
+  while(res.length<cnt) res.push(wSample(7));
+  return res;
+}
+
+function genMonteCarlo(cnt,sims=20000){
+  const scored=[];
+  const hist=new Set(DRAWS_SAMPLE.map(d=>[...d].sort((a,b)=>a-b).join(',')));
+  for(let i=0;i<sims;i++){
+    const c=wSample(7);
+    let score=c.reduce((a,n)=>a+FREQ[n],0)*0.4;
+    const hi=c.filter(n=>n>MID).length;
+    score+=(1-Math.abs(hi-3.5)/3.5)*30;
+    const od=c.filter(n=>n%2!==0).length;
+    score+=(1-Math.abs(od-3.5)/3.5)*30;
+    const s=c.reduce((a,b)=>a+b,0);
+    score+=Math.max(0,1-Math.abs(s-SUM_STATS.mean)/40/3)*20;
+    if(hist.has(c.join(','))) score-=50;
+    const cs=[...c].sort((a,b)=>a-b);
+    if(cs.some((v,i)=>i>0&&v-cs[i-1]===1)) score+=5;
+    scored.push({c,score});
+  }
+  scored.sort((a,b)=>b.score-a.score);
+  const seen=new Set(),best=[];
+  for(const {c,score} of scored){
+    const k=c.join(',');
+    if(!seen.has(k)){seen.add(k);best.push({c,score:Math.round(score)});}
+    if(best.length>=cnt) break;
+  }
+  return best;
+}
+
+// ════════════════════════════════════════════════════════════
+//  GENERADOR UI
+// ════════════════════════════════════════════════════════════
+let lastCombos=null,lastAlgoName='';
+
+function runGen(){
+  const algo=document.getElementById('algo').value;
+  const cnt=Math.min(+document.getElementById('gcnt').value||5,15);
+  const cold=document.getElementById('cold-chk').checked;
+  const btn=document.getElementById('genbtn');
+  btn.textContent='Calculando...';btn.disabled=true;
+
+  setTimeout(()=>{
+    let combos=[],algoName='',scores=[],isMC=false;
+    if(algo==='weighted'){combos=genWeighted(cnt);algoName='Aleatorio ponderado';}
+    else if(algo==='frequency'){combos=genFrequency(cnt,cold);algoName='Basado en frecuencia';}
+    else if(algo==='balanced'){combos=genBalanced(cnt);algoName='Balanceado';}
+    else{const mc=genMonteCarlo(cnt);combos=mc.map(m=>m.c);scores=mc.map(m=>m.score);algoName='Monte Carlo';isMC=true;}
+
+    lastCombos=combos;lastAlgoName=algoName;
+    let html=`<div style="font-size:11px;color:var(--muted);margin-bottom:10px">
+      <strong style="color:var(--text)">${algoName}</strong>${isMC?' · 20,000 simulaciones':''}
+    </div><div class="combos">`;
+    combos.forEach((c,i)=>{
+      const s=c.reduce((a,b)=>a+b,0);
+      const od=c.filter(n=>n%2!==0).length;
+      const hi=c.filter(n=>n>MID).length;
+      html+=`<div class="crow">
+        <div class="crow-top">
+          <span class="cidx">#${i+1}</span>
+          ${c.map(n=>ball(n)).join('')}
+        </div>
+        <div class="crow-info">
+          <span class="ci-pill">Σ ${s}</span>
+          <span class="ci-pill">${od}i / ${7-od}p</span>
+          <span class="ci-pill">${hi} altos</span>
+          ${isMC?`<span class="ci-score">⭐ ${scores[i]}</span>`:''}
+        </div>
+      </div>`;
+    });
+    html+='</div>';
+    html+=`<p class="note">🔴 Rojo = número caliente · 🔵 Azul = número frío · 🟢 Verde = neutral</p>`;
+    document.getElementById('combos-out').innerHTML=html;
+    document.getElementById('expbtn').style.display='block';
+    btn.textContent='🎰 Generar Combinaciones';btn.disabled=false;
+  }, algo==='montecarlo'?100:20);
+}
+
+function exportCsv(){
+  if(!lastCombos) return;
+  let csv='#,R1,R2,R3,R4,R5,R6,R7,Suma,Impares,Altos,Algoritmo\n';
+  csv+='# AVISO: Solo estimaciones estadisticas. No son predicciones.\n';
+  lastCombos.forEach((c,i)=>{
+    const s=c.reduce((a,b)=>a+b,0);
+    const od=c.filter(n=>n%2!==0).length;
+    const hi=c.filter(n=>n>28).length;
+    csv+=`${i+1},${c.join(',')},${s},${od},${hi},${lastAlgoName}\n`;
+  });
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
+  a.download='melate_combinaciones.csv';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+}
+
+// ════════════════════════════════════════════════════════════
+//  PWA — SERVICE WORKER & INSTALL
+// ════════════════════════════════════════════════════════════
+let deferredPrompt=null;
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  });
+}
+
+window.addEventListener('beforeinstallprompt', e=>{
+  e.preventDefault();
+  deferredPrompt=e;
+  const banner=document.getElementById('install-banner');
+  banner.style.display='flex';
+});
+
+function installApp(){
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(()=>{
+    deferredPrompt=null;
+    dismissInstall();
+  });
+}
+
+function dismissInstall(){
+  document.getElementById('install-banner').style.display='none';
+}
+
+window.addEventListener('appinstalled',()=>{dismissInstall();});
+
+// ════════════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded',()=>{
+  renderResumen();
+  renderFreq();
+  renderHotCold();
+  renderPares();
+  renderDist();
+  renderTendencia();
+
+  // Hide splash after 1.4s
+  setTimeout(()=>{
+    const s=document.getElementById('splash');
+    s.style.opacity='0';
+    setTimeout(()=>s.remove(),400);
+  },1400);
+});
+</script>
+</body>
+</html>
